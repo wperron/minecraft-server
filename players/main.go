@@ -1,58 +1,44 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 )
 
-func main() {
-	region := "ca-central-1"
-	sess := session.Must(session.NewSession())
-	svc := cloudwatchlogs.New(sess, &aws.Config{Credentials: sess.Config.Credentials, Region: &region})
-
-	group := "minecraft-server-log"
-	stream := "i-061ad4290dee60a65"
-	filter := "?\"joined the game\" ?\"left the game\""
-	logs, err := svc.FilterLogEvents(&cloudwatchlogs.FilterLogEventsInput{
-		LogGroupName:   &group,
-		LogStreamNames: []*string{&stream},
-		FilterPattern:  &filter,
-	})
-
+func handleRequest(ctx context.Context, event events.CloudwatchLogsEvent) (string, error) {
+	fmt.Printf("Processing Data: %s\n", event.AWSLogs.Data)
+	logs, err := event.AWSLogs.Parse()
 	if err != nil {
-		fmt.Printf("Error: could not perform fitler log events: %s\n", err)
-		os.Exit(1)
+		fmt.Println("Error parsing the raw log data.")
+		return "", errors.New("failed to parse raw log data.")
 	}
 
 	players := make(map[string]int)
-	for _, l := range logs.Events {
-		// count unique players
-		player := strings.Split(strings.Split(*l.Message, ": ")[1], " ")[0]
-
-		// adjust player count
-		if strings.Contains(*l.Message, "joined") {
+	for _, l := range logs.LogEvents {
+		player := fmt.Sprintf(strings.Split(strings.Split(l.Message, ": ")[1], " ")[0])
+		if strings.Contains(l.Message, "joined") {
 			players[player] = 1
-		} else if strings.Contains(*l.Message, "left") {
+		} else if strings.Contains(l.Message, "left") {
 			players[player] = 0
+		} else {
+			fmt.Printf("WARN: expected log line [ %s ] to refer to a player entering or leaving the game.\n", l.Message)
 		}
 	}
 
-	fmt.Printf("Current number of players: %d\n", countPlayers(players))
-	fmt.Printf("Unique players: \n")
-	for p, _ := range players {
-		fmt.Println(p)
+	playerNames := ""
+	for p, o := range players {
+		if o == 1 {
+			playerNames += fmt.Sprintf("%s, ", p)
+		}
 	}
+	return playerNames, nil
 }
 
-func countPlayers(players map[string]int) int {
-	total := 0
-	for _, v := range players {
-		total += v
-	}
-	return total
+func main() {
+	lambda.Start(handleRequest)
 }
