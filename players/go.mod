@@ -1,4 +1,4 @@
-module github.com/wperron/minecraft-server
+module github.com/wperron/minecraft-server/players
 
 go 1.14
 

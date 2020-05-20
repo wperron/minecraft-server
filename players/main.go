@@ -4,39 +4,59 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 func handleRequest(ctx context.Context, event events.CloudwatchLogsEvent) (string, error) {
 	fmt.Printf("Processing Data: %s\n", event.AWSLogs.Data)
+	sess := session.Must(session.NewSession())
+	dyn := dynamodb.New(sess, &aws.Config{Credentials: sess.Config.Credentials, Region: aws.String("ca-central-1")})
 	logs, err := event.AWSLogs.Parse()
 	if err != nil {
 		fmt.Println("Error parsing the raw log data.")
 		return "", errors.New("failed to parse raw log data.")
 	}
 
-	players := make(map[string]int)
+	diff := 0
 	for _, l := range logs.LogEvents {
-		player := fmt.Sprintf(strings.Split(strings.Split(l.Message, ": ")[1], " ")[0])
 		if strings.Contains(l.Message, "joined") {
-			players[player] = 1
+			diff++
 		} else if strings.Contains(l.Message, "left") {
-			players[player] = 0
+			diff--
 		} else {
 			fmt.Printf("WARN: expected log line [ %s ] to refer to a player entering or leaving the game.\n", l.Message)
 		}
 	}
 
-	playerNames := ""
-	for p, o := range players {
-		if o == 1 {
-			playerNames += fmt.Sprintf("%s, ", p)
-		}
+	update := &dynamodb.UpdateItemInput{
+		TableName: aws.String("minecraft-shipwreck-1"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: aws.String("SERVER#shipwreck"),
+			},
+		},
+		UpdateExpression: aws.String("set player_count = player_count + :diff"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":diff": {
+				N: aws.String(strconv.Itoa(diff)),
+			},
+		},
 	}
-	return playerNames, nil
+
+	_, err = dyn.UpdateItem(update)
+	if err != nil {
+		fmt.Println("Error updating the player count.")
+		return "", errors.New(err.Error())
+	}
+
+	return fmt.Sprintf("DONE: successfully updated the player count.\n"), nil
 }
 
 func main() {
