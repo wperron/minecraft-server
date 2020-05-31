@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -21,12 +22,36 @@ type Server struct {
 	LastActivity int64  `json:"last_activity"`
 }
 
-func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, error) {
-	region := aws.String("ca-central-1")
-	table := aws.String("minecraft-shipwreck-1")
-	serverId := aws.String("SERVER#shipwreck")
-	instance := aws.String("i-061ad4290dee60a65")
+var region *string
+var table *string
+var serverId *string
+var instance *string
 
+func init() {
+	envRegion, ok := os.LookupEnv("AWS_REGION")
+	if ok {
+		region = aws.String(envRegion)
+	} else {
+		region = aws.String("ca-central-1")
+	}
+
+	envTable, ok := os.LookupEnv("TABLE")
+	if ok {
+		table = aws.String(envTable)
+	}
+
+	envServer, ok := os.LookupEnv("SERVER_ID")
+	if ok {
+		serverId = aws.String(fmt.Sprintf("SERVER#%s", envServer))
+	}
+
+	envInstance, ok := os.LookupEnv("INSTANCE_ID")
+	if ok {
+		instance = aws.String(envInstance)
+	}
+}
+
+func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, error) {
 	sess := session.Must(session.NewSession())
 	config := &aws.Config{Credentials: sess.Config.Credentials, Region: region}
 	dyn := dynamodb.New(sess, config)
