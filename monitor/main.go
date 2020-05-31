@@ -21,27 +21,16 @@ type Server struct {
 }
 
 func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, error) {
-	sess := session.Must(session.NewSession())
-	dyn := dynamodb.New(sess, &aws.Config{Credentials: sess.Config.Credentials, Region: aws.String("ca-central-1")})
+	region := aws.String("ca-central-1")
 	table := aws.String("minecraft-shipwreck-1")
+	serverId := aws.String("SERVER#shipwreck")
 
-	out, err := dyn.GetItem(&dynamodb.GetItemInput{
-		TableName: table,
-		Key: map[string]*dynamodb.AttributeValue{
-			"PK": {
-				S: aws.String("SERVER#shipwreck"),
-			},
-		},
-	})
+	sess := session.Must(session.NewSession())
+	dyn := dynamodb.New(sess, &aws.Config{Credentials: sess.Config.Credentials, Region: region})
 
+	server, err := getServerInfo(dyn, table, serverId)
 	if err != nil {
-		fmt.Printf("ERROR: cloud not get item with key [ %s ] in table [ %s ].\n", "minecraft-shipwreck-1", "SERVER#shipwreck")
-		return "", err
-	}
-
-	var server Server
-	if err := dynamodbattribute.UnmarshalMap(out.Item, &server); err != nil {
-		return "", err
+		return "", nil
 	}
 
 	// zero-value for int64 means the field is not initialized
@@ -54,32 +43,60 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	if server.PlayerCount == 0 && last.Minutes() > 30 {
 		fmt.Println("Closing server after 30 minutes of inactivity.")
 	} else if server.PlayerCount > 0 {
-		server.LastActivity = time.Now().Unix()
-		if err != nil {
-			return "", err
-		}
-
-		_, err = dyn.UpdateItem(&dynamodb.UpdateItemInput{
-			TableName: table,
-			Key: map[string]*dynamodb.AttributeValue{
-				"PK": {
-					S: aws.String("SERVER#shipwreck"),
-				},
-			},
-			UpdateExpression: aws.String("set last_activity = :now"),
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":now": {
-					N: aws.String(strconv.Itoa(int(server.LastActivity))),
-				},
-			},
-		})
-
-		if err != nil {
+		if err := updateActivityTime(server, dyn, table, serverId); err != nil {
 			return "", err
 		}
 	}
 
 	return "", nil
+}
+
+func getServerInfo(dynamo *dynamodb.DynamoDB, table, serverId *string) (Server, error) {
+	out, err := dynamo.GetItem(&dynamodb.GetItemInput{
+		TableName: table,
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: serverId,
+			},
+		},
+	})
+
+	if err != nil {
+		fmt.Printf("ERROR: cloud not get item with key [ %s ] in table [ %s ].\n", *serverId, *table)
+		return Server{}, err
+	}
+
+	var server Server
+	if err := dynamodbattribute.UnmarshalMap(out.Item, &server); err != nil {
+		return Server{}, err
+	}
+
+	return server, nil
+}
+
+func updateActivityTime(s Server, dynamo *dynamodb.DynamoDB, table, serverId *string) error {
+	s.LastActivity = time.Now().Unix()
+
+	_, err := dynamo.UpdateItem(&dynamodb.UpdateItemInput{
+		TableName: table,
+		Key: map[string]*dynamodb.AttributeValue{
+			"PK": {
+				S: serverId,
+			},
+		},
+		UpdateExpression: aws.String("set last_activity = :now"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":now": {
+				N: aws.String(strconv.Itoa(int(s.LastActivity))),
+			},
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func main() {
