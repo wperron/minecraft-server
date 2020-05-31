@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 type Server struct {
@@ -24,9 +25,12 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	region := aws.String("ca-central-1")
 	table := aws.String("minecraft-shipwreck-1")
 	serverId := aws.String("SERVER#shipwreck")
+	instance := aws.String("i-061ad4290dee60a65")
 
 	sess := session.Must(session.NewSession())
-	dyn := dynamodb.New(sess, &aws.Config{Credentials: sess.Config.Credentials, Region: region})
+	config := &aws.Config{Credentials: sess.Config.Credentials, Region: region}
+	dyn := dynamodb.New(sess, config)
+	compute := ec2.New(sess, config)
 
 	server, err := getServerInfo(dyn, table, serverId)
 	if err != nil {
@@ -40,12 +44,22 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	}
 
 	last := time.Since(time.Unix(server.LastActivity, 0))
-	if server.PlayerCount == 0 && last.Minutes() > 30 {
+	running, err := isRunning(compute, instance)
+	if err != nil {
+		return "", err
+	}
+
+	if server.PlayerCount == 0 && last.Minutes() > 30 && running {
 		fmt.Println("Closing server after 30 minutes of inactivity.")
+		if err := closeServer(compute, instance); err != nil {
+			return "", err
+		}
 	} else if server.PlayerCount > 0 {
 		if err := updateActivityTime(server, dyn, table, serverId); err != nil {
 			return "", err
 		}
+	} else {
+		fmt.Println("Nothing to do.")
 	}
 
 	return "", nil
@@ -96,6 +110,25 @@ func updateActivityTime(s Server, dynamo *dynamodb.DynamoDB, table, serverId *st
 		return err
 	}
 
+	return nil
+}
+
+func isRunning(e *ec2.EC2, instance *string) (bool, error) {
+	describe, err := e.DescribeInstanceStatus(&ec2.DescribeInstanceStatusInput{
+		InstanceIds: []*string{instance},
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return len(describe.InstanceStatuses) > 0 && *describe.InstanceStatuses[0].InstanceState.Name == ec2.InstanceStateNameRunning, nil
+}
+
+func closeServer(e *ec2.EC2, instance *string) error {
+	if _, err := e.StopInstances(&ec2.StopInstancesInput{InstanceIds: []*string{instance}}); err != nil {
+		return err
+	}
 	return nil
 }
 
