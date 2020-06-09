@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -26,6 +28,7 @@ var region *string
 var table *string
 var serverId *string
 var instance *string
+var rule *string
 
 func init() {
 	envRegion, ok := os.LookupEnv("AWS_REGION")
@@ -49,6 +52,11 @@ func init() {
 	if ok {
 		instance = aws.String(envInstance)
 	}
+
+	envRule, ok := os.LookupEnv("RULE_NAME")
+	if ok {
+		rule = aws.String(envRule)
+	}
 }
 
 func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, error) {
@@ -56,6 +64,7 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	config := &aws.Config{Credentials: sess.Config.Credentials, Region: region}
 	dyn := dynamodb.New(sess, config)
 	compute := ec2.New(sess, config)
+	events := cloudwatchevents.New(sess, config)
 
 	server, err := getServerInfo(dyn, table, serverId)
 	if err != nil {
@@ -75,8 +84,12 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	}
 
 	if server.PlayerCount == 0 && last.Minutes() > 30 && running {
-		fmt.Println("Closing server after 30 minutes of inactivity.")
+		log.Println("Closing server after 30 minutes of inactivity.")
 		if err := closeServer(compute, instance); err != nil {
+			return "", err
+		}
+
+		if err := stopMonitorEvent(events, rule); err != nil {
 			return "", err
 		}
 	} else if server.PlayerCount > 0 {
@@ -152,6 +165,13 @@ func isRunning(e *ec2.EC2, instance *string) (bool, error) {
 
 func closeServer(e *ec2.EC2, instance *string) error {
 	if _, err := e.StopInstances(&ec2.StopInstancesInput{InstanceIds: []*string{instance}}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func stopMonitorEvent(e *cloudwatchevents.CloudWatchEvents, rule *string) error {
+	if _, err := e.DisableRule(&cloudwatchevents.DisableRuleInput{Name: rule}); err != nil {
 		return err
 	}
 	return nil

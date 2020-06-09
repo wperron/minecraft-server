@@ -58,15 +58,6 @@ func handleRequest(ctx context.Context) (string, error) {
 	compute := ec2.New(sess, config)
 	events := cloudwatchevents.New(sess, config)
 
-	// Disable the player monitor event to avoid closing the server before anyone has a chance to join.
-	log.Println("Disabling the activity monitor event rule.")
-	if err := stopMonitorEvent(events, rule); err != nil {
-		return "", err
-	}
-
-	// Re-enable the player monitor event after execution
-	defer restartMonitorEvent(events, rule)
-
 	// Reset the last activity time to give the server at least 30 minutes of uptime.
 	log.Println("Resetting the last_activity time to current time.")
 	now := time.Now().Unix()
@@ -81,14 +72,13 @@ func handleRequest(ctx context.Context) (string, error) {
 	}
 	log.Println("EC2 instance started.")
 
-	return "", nil
-}
-
-func stopMonitorEvent(e *cloudwatchevents.CloudWatchEvents, rule *string) error {
-	if _, err := e.DisableRule(&cloudwatchevents.DisableRuleInput{Name: rule}); err != nil {
-		return err
+	// Re-enable the player monitor event
+	log.Println("Re-enabling the CloudWatch Event Rule.")
+	if err := restartMonitorEvent(events, rule); err != nil {
+		return "", err
 	}
-	return nil
+
+	return "", nil
 }
 
 func resetLastActivity(d *dynamodb.DynamoDB, table, serverId *string, utime int64) error {
