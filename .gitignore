@@ -34,6 +34,7 @@ terraform.rc
 
 # Deployment packages
 *.zip
+**/main
 
 # Logs
 logs
