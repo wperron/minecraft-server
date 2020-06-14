@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
-    region = "ca-central-1"
-    key = "terraform.tfstate"
+    region  = "ca-central-1"
+    key     = "terraform.tfstate"
     encrypt = true
   }
 }
@@ -16,6 +16,8 @@ locals {
     terraform = "true"
   }
 }
+
+data "aws_caller_identity" "this" {}
 
 resource "aws_s3_bucket" "state" {
   bucket = "${var.app}-${var.group}-terraform-states-${local.suffix}"
