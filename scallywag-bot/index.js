@@ -23,6 +23,8 @@ ssm.getParameter({ Name: 'scallywag-bot-secret', WithDecryption: true}).promise(
                         console.error(e)
                         message.reply("Aaaaaarrrggghhhhh! 🏴‍☠️ couldn't start the server...")
                     })
+            } else if (message.content === '!ping') {
+                message.reply("pong")
             }
         })
 
