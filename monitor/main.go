@@ -66,6 +66,7 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 	compute := ec2.New(sess, config)
 	events := cloudwatchevents.New(sess, config)
 
+	log.Println("Fetching current server info from DynamoDB.")
 	server, err := getServerInfo(dyn, table, serverId)
 	if err != nil {
 		return "", nil
@@ -77,6 +78,7 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 		server.LastActivity = time.Now().Unix()
 	}
 
+	log.Println("Checking if the instance is currently running.")
 	last := time.Since(time.Unix(server.LastActivity, 0))
 	running, err := isRunning(compute, instance)
 	if err != nil {
@@ -89,10 +91,12 @@ func handleRequest(ctx context.Context, event events.CloudWatchEvent) (string, e
 			return "", err
 		}
 
+		log.Println("Disabling the CloudWatch Rule.")
 		if err := stopMonitorEvent(events, rule); err != nil {
 			return "", err
 		}
 	} else if server.PlayerCount > 0 {
+		log.Println("Updating the last heartbeat timestamp.")
 		if err := updateActivityTime(server, dyn, table, serverId); err != nil {
 			return "", err
 		}

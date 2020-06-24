@@ -137,10 +137,29 @@ data "aws_iam_policy_document" "permissions" {
     actions = [
       "ec2:StopInstances",
       "ec2:StartInstances",
-      "ec2:DesribeInstanceStatus",
     ]
     resources = [
       aws_instance.mc_server.arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "ec2:DescribeInstanceStatus",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+
+  statement {
+    actions = [
+      "events:EnableRule",
+      "events:DisableRule",
+      "events:DescribeRule",
+    ]
+    resources = [
+      aws_cloudwatch_event_rule.heartbeat.arn
     ]
   }
 }
