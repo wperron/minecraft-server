@@ -30,6 +30,11 @@ source "amazon-ebs" "ssm" {
 build {
   sources = ["source.amazon-ebs.ssm"]
 
+  provisioner "file" {
+    source = "minecraft.service"
+    destination = "/tmp/minecraft.service"
+  }
+
   provisioner "shell"{
     inline = [
       "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done"
