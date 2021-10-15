@@ -13,7 +13,9 @@ import (
 func TestEvent(t *testing.T) {
 	d := time.Now().Add(50 * time.Millisecond)
 	os.Setenv("AWS_LAMBDA_FUNCTION_NAME", "blank-go")
-	ctx, _ := context.WithDeadline(context.Background(), d)
+	ctx, cancel := context.WithDeadline(context.Background(), d)
+	defer cancel()
+
 	ctx = lambdacontext.NewContext(ctx, &lambdacontext.LambdaContext{
 		AwsRequestID:       "495b12a8-xmpl-4eca-8168-160484189f99",
 		InvokedFunctionArn: "arn:aws:lambda:us-east-2:123456789012:function:blank-go",
