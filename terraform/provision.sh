@@ -15,7 +15,7 @@ sudo apt-get install -y \
 
 echo 'installing aws cli v2...'
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip -qawscliv2.zip
+unzip -q awscliv2.zip
 sudo ./aws/install
 
 echo 'installing openjdk-14...'
