@@ -19,7 +19,7 @@ data "amazon-ami" "ubuntu" {
 }
 
 source "amazon-ebs" "ssm" {
-  ami_name = "packer build {{timestamp}}"
+  ami_name = "packer build ${formatdate("YYYY-MM-DD-hhmmss", timestamp())}"
   instance_type = "t3.small"
   region = "ca-central-1"
   source_ami = data.amazon-ami.ubuntu.id
@@ -36,13 +36,13 @@ build {
   }
 
   provisioner "file" {
-    source = "node_exporter.service"
-    destination = "/tmp/node_exporter.service"
+    source = "minecraft_exporter.service"
+    destination = "/tmp/minecraft_exporter.service"
   }
 
   provisioner "file" {
-    source = "minecraft_exporter.service"
-    destination = "/tmp/minecraft_exporter.service"
+    source = "vector.toml"
+    destination = "/tmp/vector.toml"
   }
 
   provisioner "shell"{

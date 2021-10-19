@@ -10,6 +10,13 @@ sudo apt-get install -y \
   wget \
   zip \
   ca-certificates \
+  apt-transport-https \
+  gnupg
+
+echo 'installing aws cli v2...'
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -qawscliv2.zip
+sudo ./aws/install
 
 echo 'installing openjdk-14...'
 wget -q https://download.java.net/openjdk/jdk14/ri/openjdk-14+36_linux-x64_bin.tar.gz
@@ -31,14 +38,15 @@ echo 'eula=true' > ./eula.txt
 mv ./eula.txt /home/ubuntu/server
 sudo mv /tmp/minecraft.service /etc/systemd/system/
 
-echo 'downloading node_exporter...'
-wget -q https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz
-tar xvfz node_exporter-1.2.2.linux-amd64.tar.gz
-sudo mv ./node_exporter-1.2.2.linux-amd64/node_exporter /usr/local/bin/node_exporter
-sudo mv /tmp/node_exporter.service /etc/systemd/system
-
 echo 'downloading minecraft_prometheus_exporter...'
 wget -q https://github.com/dirien/minecraft-prometheus-exporter/releases/download/v0.6.0/minecraft-exporter_0.6.0.linux-amd64.tar.gz
 tar -xzf minecraft-exporter_0.6.0.linux-amd64.tar.gz
 sudo mv ./minecraft-exporter /usr/local/bin
 sudo mv /tmp/minecraft_exporter.service /etc/systemd/system
+
+echo 'downloading vector agent...'
+curl -1sLf 'https://repositories.timber.io/public/vector/cfg/setup/bash.deb.sh' | sudo -E bash
+sudo apt-get install -y vector
+sudo mv /tmp/vector.toml /etc/vector/vector.toml
+
+echo 'done!'
