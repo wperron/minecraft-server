@@ -35,6 +35,16 @@ build {
     destination = "/tmp/minecraft.service"
   }
 
+  provisioner "file" {
+    source = "node_exporter.service"
+    destination = "/tmp/node_exporter.service"
+  }
+
+  provisioner "file" {
+    source = "minecraft_exporter.service"
+    destination = "/tmp/minecraft_exporter.service"
+  }
+
   provisioner "shell"{
     inline = [
       "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done"

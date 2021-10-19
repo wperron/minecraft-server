@@ -35,8 +35,10 @@ echo 'downloading node_exporter...'
 wget -q https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz
 tar xvfz node_exporter-1.2.2.linux-amd64.tar.gz
 sudo mv ./node_exporter-1.2.2.linux-amd64/node_exporter /usr/local/bin/node_exporter
+sudo mv /tmp/node_exporter.service /etc/systemd/system
 
 echo 'downloading minecraft_prometheus_exporter...'
 wget -q https://github.com/dirien/minecraft-prometheus-exporter/releases/download/v0.6.0/minecraft-exporter_0.6.0.linux-amd64.tar.gz
 tar -xzf minecraft-exporter_0.6.0.linux-amd64.tar.gz
 sudo mv ./minecraft-exporter /usr/local/bin
+sudo mv /tmp/minecraft_exporter.service /etc/systemd/system
