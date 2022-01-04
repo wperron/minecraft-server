@@ -9,13 +9,12 @@ User=ubuntu
 Nice=1
 KillMode=mixed
 SuccessExitStatus=0 1
-ProtectHome=true
 ProtectSystem=full
 PrivateDevices=true
 NoNewPrivileges=true
 Restart=on-failure
 RestartSec=5s
-ExecStart=/usr/local/bin/minecraft-exporter --mc.rcon-address=":25565" --mc.rcon-password="" --mc.world="./world" --log.level=error
+ExecStart=/usr/local/bin/minecraft-exporter --mc.rcon-address=":25565" --mc.rcon-password="" --mc.world=/home/ubuntu/server/world --log.level=error
 
 [Install]
 WantedBy=multi-user.target

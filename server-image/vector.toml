@@ -32,14 +32,18 @@ scrape_interval_secs = 15
 # Loki sink
 [sinks.loki]
 type = "loki"
+healthcheck.enabled = false
 inputs = [ "journalctl_in" ]
-endpoint = "https://logs-prod-us-central1.grafana.net/loki/api/v1/push"
+endpoint = "https://logs-prod-us-central1.grafana.net"
+encoding.codec = "json"
+labels.forwarder = "vector"
 auth.strategy = "basic"
 auth.user = "${LOKI_USERNAME}"
 auth.password = "${LOKI_PASSWORD}"
 
 [sinks.prom]
 type = "prometheus_remote_write"
+healthcheck.enabled = false
 inputs = [ "minecraft_exporter", "host" ]
 endpoint = "https://prometheus-us-central1.grafana.net/api/prom/push"
 auth.strategy = "basic"

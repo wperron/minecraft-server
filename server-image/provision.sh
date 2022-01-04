@@ -19,19 +19,13 @@ unzip -q awscliv2.zip
 sudo ./aws/install
 
 echo 'installing openjdk-14...'
-wget -q https://download.java.net/openjdk/jdk14/ri/openjdk-14+36_linux-x64_bin.tar.gz
-tar -xzf ./openjdk-14+36_linux-x64_bin.tar.gz
-rm ./openjdk-14+36_linux-x64_bin.tar.gz
-sudo mkdir -p /usr/local/java
-sudo mv ./jdk-14 /usr/local/java
-export JAVA_HOME=/usr/local/java/jdk-14
-export PATH=$PATH:$JAVA_HOME/bin
+sudo apt-get install -y openjdk-16-jre-headless
 
 # check java version
 java -version
 
 echo 'downloading minecraft server jar...'
-wget -q https://launcher.mojang.com/v1/objects/35139deedbd5182953cf1caa23835da59ca3d7cd/server.jar -P .
+wget -q https://launcher.mojang.com/v1/objects/a16d67e5807f57fc4e550299cf20226194497dc2/server.jar -P .
 mkdir -p /home/ubuntu/server
 sudo mv server.jar /usr/local/bin
 echo 'eula=true' > ./eula.txt
@@ -48,5 +42,10 @@ echo 'downloading vector agent...'
 curl -1sLf 'https://repositories.timber.io/public/vector/cfg/setup/bash.deb.sh' | sudo -E bash
 sudo apt-get install -y vector
 sudo mv /tmp/vector.toml /etc/vector/vector.toml
+
+echo 'enabling systemd services...'
+sudo systemctl enable minecraft
+sudo systemctl enable minecraft_exporter
+sudo systemctl enable vector
 
 echo 'done!'

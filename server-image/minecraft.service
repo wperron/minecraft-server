@@ -15,7 +15,7 @@ NoNewPrivileges=true
 Restart=on-failure
 RestartSec=5s
 WorkingDirectory=/home/ubuntu/server
-ExecStart=/usr/local/java/jdk-14/bin/java -Xmx2048M -Xms1024M -jar /usr/local/bin/server.jar nogui
+ExecStart=java -Xmx2048M -Xms1024M -jar /usr/local/bin/server.jar nogui
 
 [Install]
 WantedBy=multi-user.target
